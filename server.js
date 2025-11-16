@@ -75,14 +75,19 @@ app.post("/create-order", async (req, res) => {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
-        intent: "CAPTURE",
-        purchase_units: [
-          {
-            amount: { currency_code: currency, value: amount },
-            payee: { email_address: payeeEmail },
-          },
-        ],
-      }),
+  intent: "CAPTURE",
+  purchase_units: [
+    {
+      amount: { currency_code: currency, value: amount },
+      payee: { email_address: payeeEmail },
+    },
+  ],
+  application_context: {
+    return_url: "https://example.com/paypal-success",
+    cancel_url: "https://example.com/paypal-cancel"
+  }
+})
+,
     });
 
     const order = await orderRes.json();
