@@ -9,7 +9,7 @@ app.use(express.json());
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
-const BASE_URL = "https://api-m.sandbox.paypal.com"; // sandbox
+const BASE_URL = "https://api-m.sandbox.paypal.com";
 const PORT = process.env.PORT || 3000;
 
 let cachedToken = null;
