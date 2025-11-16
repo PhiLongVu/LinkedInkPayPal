@@ -12,16 +12,30 @@ const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
 const BASE_URL = "https://api-m.sandbox.paypal.com";
 const PORT = process.env.PORT || 3000;
 
+// Debug environment variables
+console.log("🔹 PAYPAL_CLIENT_ID:", PAYPAL_CLIENT_ID);
+console.log("🔹 PAYPAL_SECRET:", PAYPAL_SECRET ? "****" : null);
+console.log("🔹 BASE_URL:", BASE_URL);
+console.log("🔹 PORT:", PORT);
+
 let cachedToken = null;
 let tokenExpiry = 0;
 
 // Get access token (cached)
 async function getAccessToken() {
   const now = Date.now();
-  if (cachedToken && now < tokenExpiry) return cachedToken;
+  if (cachedToken && now < tokenExpiry) {
+    console.log("Using cached PayPal token");
+    return cachedToken;
+  }
+
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) {
+    throw new Error("PayPal Client ID or Secret not set!");
+  }
 
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString("base64");
 
+  console.log("Fetching new PayPal access token...");
   const res = await fetch(`${BASE_URL}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -32,8 +46,15 @@ async function getAccessToken() {
   });
 
   const data = await res.json();
+  console.log("PayPal token response:", data);
+
+  if (!data.access_token) {
+    throw new Error("Failed to get access token from PayPal");
+  }
+
   cachedToken = data.access_token;
   tokenExpiry = now + (data.expires_in - 60) * 1000; // buffer 60s
+  console.log("Cached token expires at:", new Date(tokenExpiry).toISOString());
   return cachedToken;
 }
 
@@ -41,7 +62,10 @@ async function getAccessToken() {
 app.post("/create-order", async (req, res) => {
   try {
     const { amount, currency, payeeEmail } = req.body;
+    console.log("Received create-order request:", req.body);
+
     const token = await getAccessToken();
+    console.log("Using token:", token);
 
     const orderRes = await fetch(`${BASE_URL}/v2/checkout/orders`, {
       method: "POST",
@@ -61,9 +85,11 @@ app.post("/create-order", async (req, res) => {
     });
 
     const order = await orderRes.json();
+    console.log("PayPal create-order response:", order);
+
     res.json(order);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error in create-order:", error);
     res.status(500).json({ error: "Failed to create order" });
   }
 });
@@ -72,7 +98,10 @@ app.post("/create-order", async (req, res) => {
 app.post("/capture-order", async (req, res) => {
   try {
     const { orderID } = req.body;
+    console.log("Received capture-order request:", req.body);
+
     const token = await getAccessToken();
+    console.log("Using token:", token);
 
     const captureRes = await fetch(`${BASE_URL}/v2/checkout/orders/${orderID}/capture`, {
       method: "POST",
@@ -80,9 +109,11 @@ app.post("/capture-order", async (req, res) => {
     });
 
     const captureData = await captureRes.json();
+    console.log("PayPal capture response:", captureData);
+
     res.json(captureData);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error in capture-order:", error);
     res.status(500).json({ error: "Failed to capture order" });
   }
 });
