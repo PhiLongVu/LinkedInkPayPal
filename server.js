@@ -13,10 +13,11 @@ const BASE_URL = "https://api-m.sandbox.paypal.com";
 const PORT = process.env.PORT || 3000;
 
 // Debug environment variables
-console.log("🔹 PAYPAL_CLIENT_ID:", PAYPAL_CLIENT_ID);
-console.log("🔹 PAYPAL_SECRET:", PAYPAL_SECRET);
-console.log("🔹 BASE_URL:", BASE_URL);
-console.log("🔹 PORT:", PORT);
+console.log("PAYPAL_CLIENT_ID:", PAYPAL_CLIENT_ID);
+console.log("PAYPAL_SECRET:", PAYPAL_SECRET);
+const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString("base64");
+console.log("Auth header:", auth);
+
 
 let cachedToken = null;
 let tokenExpiry = 0;
