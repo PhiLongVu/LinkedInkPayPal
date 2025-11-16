@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 
 // Debug environment variables
 console.log("🔹 PAYPAL_CLIENT_ID:", PAYPAL_CLIENT_ID);
-console.log("🔹 PAYPAL_SECRET:", PAYPAL_SECRET ? "****" : null);
+console.log("🔹 PAYPAL_SECRET:", PAYPAL_SECRET);
 console.log("🔹 BASE_URL:", BASE_URL);
 console.log("🔹 PORT:", PORT);
 
