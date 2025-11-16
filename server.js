@@ -19,16 +19,11 @@ let tokenExpiry = 0;
 // Get PayPal access token (cached)
 async function getAccessToken() {
   const now = Date.now();
-  if (cachedToken && now < tokenExpiry) {
-    return cachedToken;
-  }
+  if (cachedToken && now < tokenExpiry) return cachedToken;
 
-  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) {
-    throw new Error("PayPal Client ID or Secret not set!");
-  }
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) throw new Error("PayPal credentials not set");
 
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString("base64");
-
   const res = await fetch(`${BASE_URL}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -39,10 +34,7 @@ async function getAccessToken() {
   });
 
   const data = await res.json();
-
-  if (!data.access_token) {
-    throw new Error("Failed to get access token from PayPal");
-  }
+  if (!data.access_token) throw new Error("Failed to get access token");
 
   cachedToken = data.access_token;
   tokenExpiry = now + (data.expires_in - 60) * 1000; // 60s buffer
@@ -53,17 +45,15 @@ async function getAccessToken() {
 app.post("/create-order", async (req, res) => {
   try {
     const { amount, currency, payeeEmail } = req.body;
-
     const token = await getAccessToken();
 
-    // Generate a unique success token
     const successToken = crypto.randomBytes(8).toString("hex");
 
     const orderRes = await fetch(`${BASE_URL}/v2/checkout/orders`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         intent: "CAPTURE",
@@ -74,7 +64,6 @@ app.post("/create-order", async (req, res) => {
           },
         ],
         application_context: {
-          // Send dynamic success token in return URL
           return_url: `https://yourapp.com/paypal-success?token=${successToken}`,
           cancel_url: `https://yourapp.com/paypal-cancel`,
         },
@@ -82,12 +71,22 @@ app.post("/create-order", async (req, res) => {
     });
 
     const order = await orderRes.json();
-    const approveLink = order.links?.find(link => link.rel === "approve")?.href;
 
-    res.json({ orderID: order.id, approveLink, successToken });
+    if (!order || !Array.isArray(order.links)) {
+      console.error("❌ Invalid PayPal response:", order);
+      return res.status(500).json({ error: "Invalid PayPal order response" });
+    }
 
-  } catch (error) {
-    console.error("❌ Error in create-order:", error);
+    const approveLinkObj = order.links.find(link => link.rel === "approve");
+    if (!approveLinkObj || !approveLinkObj.href) {
+      console.error("❌ No approve link in PayPal order:", order);
+      return res.status(500).json({ error: "PayPal approve link not found" });
+    }
+
+    res.json({ orderID: order.id, approveLink: approveLinkObj.href, successToken });
+
+  } catch (err) {
+    console.error("❌ Error creating PayPal order:", err);
     res.status(500).json({ error: "Failed to create order" });
   }
 });
@@ -96,7 +95,6 @@ app.post("/create-order", async (req, res) => {
 app.post("/capture-order", async (req, res) => {
   try {
     const { orderID } = req.body;
-
     const token = await getAccessToken();
 
     const captureRes = await fetch(`${BASE_URL}/v2/checkout/orders/${orderID}/capture`, {
@@ -105,11 +103,10 @@ app.post("/capture-order", async (req, res) => {
     });
 
     const captureData = await captureRes.json();
-
     res.json(captureData);
 
-  } catch (error) {
-    console.error("❌ Error in capture-order:", error);
+  } catch (err) {
+    console.error("❌ Error capturing PayPal order:", err);
     res.status(500).json({ error: "Failed to capture order" });
   }
 });
