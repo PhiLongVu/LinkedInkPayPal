@@ -80,8 +80,8 @@ app.post("/create-order", async (req, res) => {
           },
         ],
         application_context: {
-          return_url: "https://example.com/paypal-success",
-          cancel_url: "https://example.com/paypal-cancel"
+          return_url: "linkedink://paypal-success",
+          cancel_url: "linkedink://paypal-cancel"
         }
       }),
     });
